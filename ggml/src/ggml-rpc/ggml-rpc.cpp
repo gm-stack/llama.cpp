@@ -320,11 +320,20 @@ static std::shared_ptr<socket_t> create_server_socket(const char * host, int por
     return sock;
 }
 
+#define MAX_SOCK_LEN 1024*1024*1024
+
 static bool send_data(sockfd_t sockfd, const void * data, size_t size) {
     size_t bytes_sent = 0;
     while (bytes_sent < size) {
-        ssize_t n = send(sockfd, (const char *)data + bytes_sent, size - bytes_sent, 0);
+        size_t send_size = size - bytes_sent;
+        if (send_size > MAX_SOCK_LEN) {
+            send_size = MAX_SOCK_LEN;
+            fprintf(stderr, "Limiting max send to %zu bytes at a time\n", send_size);
+        }
+        ssize_t n = send(sockfd, (const char *)data + bytes_sent, send_size, 0);
+        fprintf(stderr, "Sent %zd bytes\n", n);
         if (n < 0) {
+            fprintf(stderr, "Socket error: %i: %s\n", errno, strerror(errno));
             return false;
         }
         bytes_sent += n;
@@ -335,8 +344,14 @@ static bool send_data(sockfd_t sockfd, const void * data, size_t size) {
 static bool recv_data(sockfd_t sockfd, void * data, size_t size) {
     size_t bytes_recv = 0;
     while (bytes_recv < size) {
-        ssize_t n = recv(sockfd, (char *)data + bytes_recv, size - bytes_recv, 0);
+        size_t recv_size = size - bytes_recv;
+        if (recv_size > MAX_SOCK_LEN) {
+            recv_size = MAX_SOCK_LEN;
+            fprintf(stderr, "Limiting max recv to %zu bytes at a time\n", recv_size);
+        }
+        ssize_t n = recv(sockfd, (char *)data + bytes_recv, recv_size, 0);
         if (n <= 0) {
+            fprintf(stderr, "Socket error: %i: %s\n", errno, strerror(errno));
             return false;
         }
         bytes_recv += n;
