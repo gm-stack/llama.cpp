@@ -320,7 +320,7 @@ static std::shared_ptr<socket_t> create_server_socket(const char * host, int por
     return sock;
 }
 
-#define MAX_SOCK_LEN 1024*1024*1024
+#define MAX_SOCK_LEN 1024*1024*128 // send/recv max 128MB at a time
 
 static bool send_data(sockfd_t sockfd, const void * data, size_t size) {
     size_t bytes_sent = 0;
@@ -328,10 +328,8 @@ static bool send_data(sockfd_t sockfd, const void * data, size_t size) {
         size_t send_size = size - bytes_sent;
         if (send_size > MAX_SOCK_LEN) {
             send_size = MAX_SOCK_LEN;
-            fprintf(stderr, "Limiting max send to %zu bytes at a time\n", send_size);
         }
         ssize_t n = send(sockfd, (const char *)data + bytes_sent, send_size, 0);
-        fprintf(stderr, "Sent %zd bytes\n", n);
         if (n < 0) {
             fprintf(stderr, "Socket error: %i: %s\n", errno, strerror(errno));
             return false;
@@ -347,7 +345,6 @@ static bool recv_data(sockfd_t sockfd, void * data, size_t size) {
         size_t recv_size = size - bytes_recv;
         if (recv_size > MAX_SOCK_LEN) {
             recv_size = MAX_SOCK_LEN;
-            fprintf(stderr, "Limiting max recv to %zu bytes at a time\n", recv_size);
         }
         ssize_t n = recv(sockfd, (char *)data + bytes_recv, recv_size, 0);
         if (n <= 0) {
